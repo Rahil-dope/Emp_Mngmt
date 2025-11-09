@@ -425,11 +425,11 @@ def edit_agent(agent_id):
             dsat = request.form.get('dsat')
             review = request.form.get('review')
             
-            # Validate CSAT/DSAT (0-10 range)
+            # Validate CSAT/DSAT (0-100 range)
             if csat:
                 csat_val = float(csat)
-                if csat_val < 0 or csat_val > 10:
-                    flash('CSAT must be between 0 and 10', 'danger')
+                if csat_val < 0 or csat_val > 100:
+                    flash('CSAT must be between 0 and 100', 'danger')
                     return render_template('edit_agent.html', agent=agent)
                 agent.csat = csat_val
             else:
@@ -437,13 +437,13 @@ def edit_agent(agent_id):
                 
             if dsat:
                 dsat_val = float(dsat)
-                if dsat_val < 0 or dsat_val > 10:
-                    flash('DSAT must be between 0 and 10', 'danger')
+                if dsat_val < 0 or dsat_val > 100:
+                    flash('DSAT must be between 0 and 100', 'danger')
                     return render_template('edit_agent.html', agent=agent)
                 agent.dsat = dsat_val
             else:
                 agent.dsat = None
-                
+            
             agent.review = review.strip() if review else None
             db.session.commit()
             flash('Agent performance updated successfully', 'success')
@@ -711,13 +711,47 @@ def agent_history(agent_id):
     agent = Agent.query.get_or_404(agent_id)
     attendances = Attendance.query.filter_by(agent_id=agent_id).order_by(
         Attendance.date.desc(), Attendance.login_time.desc()).all()
-    
+
     # Calculate statistics
     total_hours = sum(a.total_hours for a in attendances if a.total_hours)
     completed_sessions = [a for a in attendances if a.total_hours]
     avg_hours = total_hours / len(completed_sessions) if completed_sessions else 0
     
     return render_template('agent_history.html', 
+                         agent=agent, 
+                         attendances=attendances,
+                         total_hours=total_hours,
+                         avg_hours=avg_hours)
+
+@app.route('/admin/delete_agent/<int:agent_id>', methods=['POST'])
+@login_required
+def delete_agent(agent_id):
+    if current_user.role != 'admin':
+        flash('Access denied', 'danger')
+        return redirect(url_for('login'))
+    
+    if current_user.id == agent_id:
+        flash('Cannot delete your own admin account', 'danger')
+        return redirect(url_for('admin_dashboard'))
+    
+    agent = Agent.query.get_or_404(agent_id)
+    if agent.role == 'admin':
+        flash('Cannot delete admin accounts', 'danger')
+        return redirect(url_for('admin_dashboard'))
+    
+    try:
+        # Delete related records first (attendance records)
+        Attendance.query.filter_by(agent_id=agent_id).delete()
+        
+        # Delete the agent
+        db.session.delete(agent)
+        db.session.commit()
+        flash(f'Agent {agent.name} has been deleted', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting agent: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_dashboard')) 
                          agent=agent, 
                          attendances=attendances,
                          total_hours=total_hours,

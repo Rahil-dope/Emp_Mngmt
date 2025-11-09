@@ -60,13 +60,13 @@
         <div class="performance-indicator">
           <small class="text-muted">CSAT</small>
           <div class="progress" style="height: 4px;">
-            <div class="progress-bar bg-success" style="width: {{ (avg_csat or 0) * 10 }}%"></div>
+            <div class="progress-bar bg-success" style="width: {{ avg_csat or 0 }}%"></div>
           </div>
         </div>
         <div class="performance-indicator mt-2">
           <small class="text-muted">DSAT</small>
           <div class="progress" style="height: 4px;">
-            <div class="progress-bar bg-warning" style="width: {{ (avg_dsat or 0) * 10 }}%"></div>
+            <div class="progress-bar bg-warning" style="width: {{ avg_dsat or 0 }}%"></div>
           </div>
         </div>
       </div>
@@ -177,14 +177,14 @@
           </td>
           <td>
             {% if a.csat %}
-              <span class="badge bg-success">{{ '%.1f'|format(a.csat) }}</span>
+              <span class="badge bg-success">{{ '%.1f'|format(a.csat) }}%</span>
             {% else %}
               <span class="badge bg-light text-muted">N/A</span>
             {% endif %}
           </td>
           <td>
             {% if a.dsat %}
-              <span class="badge bg-warning text-dark">{{ '%.1f'|format(a.dsat) }}</span>
+              <span class="badge bg-warning text-dark">{{ '%.1f'|format(a.dsat) }}%</span>
             {% else %}
               <span class="badge bg-light text-muted">N/A</span>
             {% endif %}
@@ -207,6 +207,31 @@
               <a href="/agent/{{ a.id }}/history" class="btn btn-sm btn-outline-secondary">
                 <i class="fas fa-history"></i>
               </a>
+              {% if a.role != 'admin' %}
+              <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ a.id }}">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+              <!-- Delete Confirmation Modal -->
+              <div class="modal fade" id="deleteModal{{ a.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title">Delete Agent</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                      Are you sure you want to delete agent <strong>{{ a.name }}</strong>? This action cannot be undone.
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                      <form action="/admin/delete_agent/{{ a.id }}" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
             </div>
           </td>
         </tr>

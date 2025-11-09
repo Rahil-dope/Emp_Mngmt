@@ -143,6 +143,11 @@ DATABASE_URL=postgresql://username:password@db-host.example.com:5432/emp_mngmt
 FLASK_DEBUG=0
 ```
 
+Important note about SQLite on Vercel and other serverless hosts:
+
+- If you do not provide an external database, the app will try to use a writable temporary path (for example `/tmp/attendance.db`) when running on Vercel. This avoids "readonly database" errors, but the storage is ephemeral — all data will be lost when the function instance is recycled or when you redeploy.
+- For production you should always use an external managed database (Postgres, MySQL, etc.) and set `DATABASE_URL` or `SQLALCHEMY_DATABASE_URI` in Vercel.
+
 ## Support
 
 For issues or feature requests, please contact your system administrator.

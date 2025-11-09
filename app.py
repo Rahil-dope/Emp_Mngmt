@@ -37,11 +37,30 @@ if database_url:
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    # Use a local sqlite file inside instance/ for development
-    instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
-    os.makedirs(instance_path, exist_ok=True)
-    db_path = os.path.join(instance_path, 'attendance.db')
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+    # No external DB provided — decide where to place a local SQLite file.
+    # On many serverless hosts (Vercel) the project directory is read-only. A writable
+    # temporary path such as /tmp is available during runtime but is ephemeral.
+    use_tmp = False
+    # Detect common production indicators (VERCEL deploys set VERCEL env var)
+    if os.environ.get('VERCEL') or os.environ.get('NOW') or os.environ.get('FLASK_ENV') == 'production' or os.environ.get('FLASK_DEBUG') == '0':
+        # prefer /tmp when available (writable on many hosts)
+        tmp_dir = os.environ.get('TMPDIR') or os.environ.get('TEMP') or '/tmp'
+        try:
+            if os.path.isdir(tmp_dir) and os.access(tmp_dir, os.W_OK):
+                use_tmp = True
+                db_path = os.path.join(tmp_dir, 'attendance.db')
+        except Exception:
+            use_tmp = False
+
+    if use_tmp:
+        print('Using temporary SQLite database at', db_path, '(ephemeral storage, not persistent)')
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+    else:
+        # Fallback to local instance/ directory for development (writable locally)
+        instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
+        os.makedirs(instance_path, exist_ok=True)
+        db_path = os.path.join(instance_path, 'attendance.db')
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 
 # Common SQLAlchemy settings
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False

@@ -70,6 +70,18 @@ db = SQLAlchemy(app)
 # Rate limiting
 limiter = Limiter(get_remote_address, app=app, default_limits=["200 per hour"]) 
 
+# Flask-Login initialization
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+@login_manager.user_loader
+def load_user(user_id):
+    try:
+        return Agent.query.get(int(user_id))
+    except Exception:
+        return None
+
 # Models
 class Agent(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -200,8 +212,31 @@ def init_db():
             print(f"Error creating admin user: {e}")
             db.session.rollback()
 
-# Initialize database
-init_db()
+# Error handlers for production
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()  # Roll back any failed transactions
+    return render_template('error.html', 
+                         error_code=500,
+                         error_message="An internal error occurred. Please try again later."), 500
+
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('error.html',
+                         error_code=404,
+                         error_message="The requested page was not found."), 404
+
+# Initialize database with error handling
+try:
+    init_db()
+except Exception as e:
+    print(f"Database initialization error: {str(e)}")
+    if os.environ.get('VERCEL'):
+        print("Error occurred during Vercel deployment")
+        # Log additional environment information
+        print(f"Database URL type: {'external' if database_url else 'sqlite'}")
+        print(f"Database path: {db_path if 'db_path' in locals() else 'not set'}")
+        print(f"Temporary storage used: {use_tmp if 'use_tmp' in locals() else 'unknown'}")
 
 # Routes
 @app.route('/', methods=['GET', 'POST'])

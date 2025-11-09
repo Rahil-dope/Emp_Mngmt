@@ -786,11 +786,7 @@ def delete_agent(agent_id):
         db.session.rollback()
         flash(f'Error deleting agent: {str(e)}', 'danger')
     
-    return redirect(url_for('admin_dashboard')) 
-                         agent=agent, 
-                         attendances=attendances,
-                         total_hours=total_hours,
-                         avg_hours=avg_hours)
+    return redirect(url_for('admin_dashboard'))
 
 if __name__ == '__main__':
     app.run(debug=True)

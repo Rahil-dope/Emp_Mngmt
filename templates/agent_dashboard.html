@@ -1,0 +1,171 @@
+{% extends 'layout.html' %}
+{% block title %}Agent Dashboard{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3><i class="fas fa-user-circle me-2"></i>Welcome, {{ agent.name }}</h3>
+  <div>
+    <a href="/announcements" class="btn btn-outline-info me-2">
+      <i class="fas fa-bullhorn me-1"></i>Announcements
+    </a>
+    <a href="/my_profile" class="btn btn-outline-primary">
+      <i class="fas fa-user me-1"></i>My Profile
+    </a>
+  </div>
+</div>
+
+<!-- Status Card -->
+<div class="row mb-4">
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-4">
+          <i class="fas fa-clock me-2"></i>Time Tracking
+        </h5>
+        <div class="d-grid gap-2">
+          <form method="post" action="/time_in">
+            <button type="submit" class="btn btn-success btn-lg w-100">
+              <i class="fas fa-sign-in-alt me-2"></i>Time In
+            </button>
+          </form>
+          <form method="post" action="/time_out">
+            <button type="submit" class="btn btn-danger btn-lg w-100">
+              <i class="fas fa-sign-out-alt me-2"></i>Time Out
+            </button>
+          </form>
+        </div>
+        {% if active_session %}
+        <div class="alert alert-info mt-3 mb-0">
+          <i class="fas fa-info-circle me-2"></i>
+          <strong>Active Session:</strong> Clocked in at {{ active_session.login_time|format_time }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-4">
+          <i class="fas fa-chart-bar me-2"></i>Performance Overview
+        </h5>
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span><i class="fas fa-star text-success me-2"></i>CSAT Score</span>
+            <strong id="csat-val">{{ "%.1f"|format(agent.csat) if agent.csat else 'N/A' }}</strong>
+          </div>
+          <div class="progress" style="height: 8px;">
+            <div id="csat-bar" class="progress-bar bg-success" style="width: {{ (agent.csat or 0) * 10 }}%"></div>
+          </div>
+        </div>
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span><i class="fas fa-exclamation-triangle text-warning me-2"></i>DSAT Score</span>
+            <strong id="dsat-val">{{ "%.1f"|format(agent.dsat) if agent.dsat else 'N/A' }}</strong>
+          </div>
+          <div class="progress" style="height: 8px;">
+            <div id="dsat-bar" class="progress-bar bg-warning" style="width: {{ (agent.dsat or 0) * 10 }}%"></div>
+          </div>
+        </div>
+        <div id="review-box" class="mt-3 p-2 bg-light rounded" style="display: {{ 'block' if agent.review else 'none' }};">
+          <small class="text-muted d-block mb-1">Latest Review:</small>
+          <p id="review-text" class="mb-0">{{ (agent.review or '')[:100] }}{% if agent.review and agent.review|length > 100 %}...{% endif %}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Attendance History -->
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-white py-3">
+    <h5 class="mb-0">
+      <i class="fas fa-history me-2"></i>Attendance History
+    </h5>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Login Time</th>
+          <th>Logout Time</th>
+          <th>Total Hours</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in attendances %}
+        <tr>
+          <td>{{ a.date|format_date }}</td>
+          <td>
+            <i class="fas fa-sign-in-alt text-success me-1"></i>
+            {{ a.login_time|format_time }}
+          </td>
+          <td>
+            {% if a.logout_time %}
+              <i class="fas fa-sign-out-alt text-danger me-1"></i>
+              {{ a.logout_time|format_time }}
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if a.total_hours %}
+              <span class="badge bg-primary">{{ "%.2f"|format(a.total_hours) }} hrs</span>
+            {% else %}
+              <span class="badge bg-light text-muted">In Progress</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not a.logout_time %}
+              <span class="badge bg-success">Active</span>
+            {% else %}
+              <span class="badge bg-secondary">Completed</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center py-4">
+            <i class="fas fa-inbox fa-2x text-muted mb-2"></i>
+            <p class="mb-0 text-muted">No attendance records yet</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+// Poll for updated performance values every 15 seconds
+function updateMyStats() {
+  fetch('/api/agent/me').then(r => r.json()).then(d => {
+    const csatVal = document.getElementById('csat-val');
+    const dsatVal = document.getElementById('dsat-val');
+    const csatBar = document.getElementById('csat-bar');
+    const dsatBar = document.getElementById('dsat-bar');
+    const reviewBox = document.getElementById('review-box');
+    const reviewText = document.getElementById('review-text');
+    if (csatVal) csatVal.textContent = (d.csat !== null && d.csat !== undefined) ? d.csat.toFixed(1) : 'N/A';
+    if (dsatVal) dsatVal.textContent = (d.dsat !== null && d.dsat !== undefined) ? d.dsat.toFixed(1) : 'N/A';
+    if (csatBar) csatBar.style.width = ((d.csat || 0) * 10) + '%';
+    if (dsatBar) dsatBar.style.width = ((d.dsat || 0) * 10) + '%';
+    if (reviewBox && reviewText) {
+      if (d.review) {
+        reviewBox.style.display = 'block';
+        reviewText.textContent = d.review.length > 100 ? d.review.slice(0,100) + '...' : d.review;
+      } else {
+        reviewBox.style.display = 'none';
+        reviewText.textContent = '';
+      }
+    }
+  }).catch(() => {});
+}
+setInterval(updateMyStats, 15000);
+document.addEventListener('DOMContentLoaded', updateMyStats);
+</script>
+{% endblock %}
+{% endblock %}

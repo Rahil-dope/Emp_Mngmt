@@ -1,0 +1,312 @@
+{% extends 'layout.html' %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3><i class="fas fa-tachometer-alt me-2"></i>Admin Dashboard</h3>
+  <div>
+    <a href="/announcements" class="btn btn-outline-primary me-2">
+      <i class="fas fa-bullhorn me-1"></i>Announcements
+    </a>
+    <div class="btn-group">
+      <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown">
+        <i class="fas fa-download me-1"></i>Export Data
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><h6 class="dropdown-header">Export Format</h6></li>
+        <li><a class="dropdown-item" href="/export?format=csv">
+          <i class="fas fa-file-csv me-2"></i>Export as CSV
+        </a></li>
+        <li><a class="dropdown-item" href="/export?format=xlsx">
+          <i class="fas fa-file-excel me-2"></i>Export as Excel
+        </a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><h6 class="dropdown-header">Date Range</h6></li>
+        <li>
+          <form class="px-3 py-2" method="get" action="/export" id="exportForm">
+            <input type="hidden" name="format" value="csv" id="exportFormat">
+            <div class="mb-2">
+              <label class="form-label small">From Date</label>
+              <input type="date" name="date_from" class="form-control form-control-sm">
+            </div>
+            <div class="mb-2">
+              <label class="form-label small">To Date</label>
+              <input type="date" name="date_to" class="form-control form-control-sm">
+            </div>
+            <div class="btn-group w-100">
+              <button type="submit" class="btn btn-sm btn-primary" onclick="document.getElementById('exportFormat').value='csv'">
+                CSV
+              </button>
+              <button type="submit" class="btn btn-sm btn-success" onclick="document.getElementById('exportFormat').value='xlsx'">
+                Excel
+              </button>
+            </div>
+          </form>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <!-- Performance Stats -->
+  <div class="col-md-6 col-lg-3">
+    <div class="card h-100 border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-2 text-muted">Team Performance</h6>
+        <h4 class="card-title mb-4">
+          <i class="fas fa-star text-warning me-2"></i>{{ '%.2f'|format(avg_csat or 0) }}
+        </h4>
+        <div class="performance-indicator">
+          <small class="text-muted">CSAT</small>
+          <div class="progress" style="height: 4px;">
+            <div class="progress-bar bg-success" style="width: {{ (avg_csat or 0) * 10 }}%"></div>
+          </div>
+        </div>
+        <div class="performance-indicator mt-2">
+          <small class="text-muted">DSAT</small>
+          <div class="progress" style="height: 4px;">
+            <div class="progress-bar bg-warning" style="width: {{ (avg_dsat or 0) * 10 }}%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Agents -->
+  <div class="col-md-6 col-lg-3">
+    <div class="card h-100 border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-2 text-muted">Currently Active</h6>
+        <h4 class="card-title mb-3">
+          <i class="fas fa-user-clock text-success me-2"></i>{{ logged_in|length }}
+        </h4>
+        <div class="active-agents">
+          {% for agent, att in logged_in[:3] %}
+            <div class="d-flex align-items-center mb-2">
+              <div class="status-dot bg-success me-2"></div>
+              <small>{{ agent.name }} 
+                <span class="text-muted">({{ att.login_time.strftime('%H:%M') }})</span>
+              </small>
+            </div>
+          {% endfor %}
+          {% if logged_in|length > 3 %}
+            <small class="text-muted">+ {{ logged_in|length - 3 }} more</small>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="col-md-6 col-lg-3">
+    <div class="card h-100 border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-2 text-muted">Team Overview</h6>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h4 class="mb-0">{{ agents|length }}</h4>
+            <small class="text-muted">Total Agents</small>
+          </div>
+          <i class="fas fa-users fa-2x text-primary opacity-50"></i>
+        </div>
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">{{ attendances|length }}</h4>
+            <small class="text-muted">Records Today</small>
+          </div>
+          <i class="fas fa-chart-line fa-2x text-success opacity-50"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="col-md-6 col-lg-3">
+    <div class="card h-100 border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-2 text-muted">Quick Actions</h6>
+        <div class="d-grid gap-2">
+          <button class="btn btn-outline-primary btn-sm" onclick="refreshStats()">
+            <i class="fas fa-sync-alt me-1"></i>Refresh Stats
+          </button>
+          <a href="#agents" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-user-cog me-1"></i>Manage Agents
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Agents Table -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+    <h5 class="mb-0" id="agents">
+      <i class="fas fa-users me-2"></i>Team Members
+    </h5>
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-outline-secondary" href="/admin/create_agent">
+        <i class="fas fa-user-plus me-1"></i>Create Agent
+      </a>
+      <a class="btn btn-sm btn-outline-success" href="/export_performance">
+        <i class="fas fa-file-csv me-1"></i>Export Performance
+      </a>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>CSAT</th>
+          <th>DSAT</th>
+          <th>Status</th>
+          <th>Review</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in agents %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center">
+              <i class="fas fa-user-circle text-secondary me-2"></i>
+              {{ a.name }}
+            </div>
+          </td>
+          <td>
+            {% if a.csat %}
+              <span class="badge bg-success">{{ '%.1f'|format(a.csat) }}</span>
+            {% else %}
+              <span class="badge bg-light text-muted">N/A</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if a.dsat %}
+              <span class="badge bg-warning text-dark">{{ '%.1f'|format(a.dsat) }}</span>
+            {% else %}
+              <span class="badge bg-light text-muted">N/A</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if (a, None)|in_tuple_list(logged_in) %}
+              <span class="badge bg-success">Active</span>
+            {% else %}
+              <span class="badge bg-secondary">Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            <small class="text-muted">{{ (a.review[:40] + '...') if a.review and a.review|length > 40 else a.review or 'No review' }}</small>
+          </td>
+          <td>
+            <div class="btn-group">
+              <a href="/agent/{{ a.id }}/edit" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-edit"></i>
+              </a>
+              <a href="/agent/{{ a.id }}/history" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-history"></i>
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Recent Attendance -->
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">
+      <i class="fas fa-clock me-2"></i>Recent Attendance
+    </h5>
+    <form class="d-flex align-items-center" method="get" action="/admin">
+      <div class="me-2">
+        <input type="date" class="form-control form-control-sm" name="date_from" value="{{ date_from }}" placeholder="From">
+      </div>
+      <div class="me-2">
+        <input type="date" class="form-control form-control-sm" name="date_to" value="{{ date_to }}" placeholder="To">
+      </div>
+      <button class="btn btn-sm btn-outline-primary me-2" type="submit">
+        <i class="fas fa-filter me-1"></i>Filter
+      </button>
+      <a class="btn btn-sm btn-outline-secondary" href="/admin">Clear</a>
+    </form>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Agent</th>
+          <th>Date</th>
+          <th>Login</th>
+          <th>Logout</th>
+          <th>Duration</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for at in attendances %}
+        <tr>
+          <td>{{ at.agent.name }}</td>
+          <td>{{ at.date.strftime('%Y-%m-%d') }}</td>
+          <td>
+            <i class="fas fa-sign-in-alt text-success me-1"></i>
+            {{ at.login_time.strftime('%H:%M:%S') if at.login_time else '' }}
+          </td>
+          <td>
+            {% if at.logout_time %}
+              <i class="fas fa-sign-out-alt text-danger me-1"></i>
+              {{ at.logout_time.strftime('%H:%M:%S') }}
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if at.total_hours %}
+              <span class="badge bg-light text-dark">
+                {{ '%.2f'|format(at.total_hours) }} hrs
+              </span>
+            {% else %}
+              <span class="badge bg-light text-muted">In Progress</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not at.logout_time %}
+              <span class="badge bg-success">Active</span>
+            {% else %}
+              <span class="badge bg-secondary">Completed</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center py-4">
+            <i class="fas fa-inbox fa-2x text-muted mb-2"></i>
+            <p class="mb-0 text-muted">No attendance records found</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function refreshStats() {
+  fetch('/api/stats')
+    .then(response => response.json())
+    .then(data => {
+      // Update dashboard stats dynamically if needed
+      location.reload();
+    })
+    .catch(error => {
+      console.error('Error fetching stats:', error);
+      location.reload();
+    });
+}
+
+</script>
+{% endblock %}

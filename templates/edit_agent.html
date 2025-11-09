@@ -1,0 +1,71 @@
+{% extends 'layout.html' %}
+{% block title %}Edit Agent{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3><i class="fas fa-user-edit me-2"></i>Edit Agent: {{ agent.name }}</h3>
+  <a class="btn btn-outline-secondary" href="/admin">
+    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+  </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body">
+    <form method="post">
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">
+            <i class="fas fa-star text-success me-2"></i>CSAT Score (0-10)
+          </label>
+          <input 
+            type="number" 
+            step="0.1" 
+            min="0" 
+            max="10" 
+            class="form-control" 
+            name="csat" 
+            value="{{ agent.csat or '' }}" 
+            placeholder="Enter CSAT score (0-10)"
+          />
+          <small class="form-text text-muted">Customer Satisfaction Score</small>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">
+            <i class="fas fa-exclamation-triangle text-warning me-2"></i>DSAT Score (0-10)
+          </label>
+          <input 
+            type="number" 
+            step="0.1" 
+            min="0" 
+            max="10" 
+            class="form-control" 
+            name="dsat" 
+            value="{{ agent.dsat or '' }}" 
+            placeholder="Enter DSAT score (0-10)"
+          />
+          <small class="form-text text-muted">Dissatisfaction Score</small>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">
+          <i class="fas fa-comment-alt me-2"></i>Performance Review
+        </label>
+        <textarea 
+          class="form-control" 
+          name="review" 
+          rows="6" 
+          placeholder="Enter performance review and feedback..."
+        >{{ agent.review or '' }}</textarea>
+        <small class="form-text text-muted">Provide detailed feedback about the agent's performance</small>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-save me-2"></i>Save Changes
+        </button>
+        <a class="btn btn-secondary" href="/admin">
+          <i class="fas fa-times me-2"></i>Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

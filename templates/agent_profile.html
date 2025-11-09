@@ -1,0 +1,133 @@
+{% extends 'layout.html' %}
+{% block title %}My Profile{% endblock %}
+{% block content %}
+<div class="profile-section mb-4">
+  <div class="d-flex align-items-center mb-4">
+    <div class="me-3">
+      <i class="fas fa-user-circle fa-4x text-primary"></i>
+    </div>
+    <div>
+      <h3 class="mb-1">{{ agent.name }}</h3>
+      <span class="badge bg-primary">{{ agent.role }}</span>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title mb-4">
+            <i class="fas fa-chart-line me-2"></i>Performance Metrics
+          </h5>
+          
+          <div class="performance-indicator">
+            <div class="performance-label">CSAT</div>
+            <div class="performance-bar">
+              <div class="performance-value" style="width: {{ (agent.csat or 0) * 10 }}%;"></div>
+            </div>
+            <div class="performance-text">{{ "%.1f"|format(agent.csat or 0) }}</div>
+          </div>
+
+          <div class="performance-indicator">
+            <div class="performance-label">DSAT</div>
+            <div class="performance-bar">
+              <div class="performance-value bg-warning" style="width: {{ (agent.dsat or 0) * 10 }}%;"></div>
+            </div>
+            <div class="performance-text">{{ "%.1f"|format(agent.dsat or 0) }}</div>
+          </div>
+
+          {% if agent.review %}
+          <div class="mt-4">
+            <h6><i class="fas fa-comment me-2"></i>Latest Review</h6>
+            <p class="mb-0 text-muted">{{ agent.review }}</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title mb-4">
+            <i class="fas fa-key me-2"></i>Security
+          </h5>
+          <form method="post" action="{{ url_for('change_password') }}">
+            <div class="mb-3">
+              <label class="form-label">Current Password</label>
+              <input type="password" name="current_password" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">New Password</label>
+              <input type="password" name="new_password" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Confirm New Password</label>
+              <input type="password" name="confirm_password" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save me-2"></i>Update Password
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title mb-4">
+        <i class="fas fa-history me-2"></i>Recent Attendance
+      </h5>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Login Time</th>
+              <th>Logout Time</th>
+              <th>Total Hours</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in attendances[:10] %}
+            <tr>
+              <td>{{ a.date.strftime('%Y-%m-%d') }}</td>
+              <td><i class="fas fa-sign-in-alt me-1 text-success"></i>{{ a.login_time.strftime('%H:%M:%S') if a.login_time else '' }}</td>
+              <td><i class="fas fa-sign-out-alt me-1 text-danger"></i>{{ a.logout_time.strftime('%H:%M:%S') if a.logout_time else '' }}</td>
+              <td>{{ "%.2f"|format(a.total_hours) if a.total_hours else '-' }}</td>
+              <td>
+                {% if not a.logout_time %}
+                <span class="attendance-status status-active">Active</span>
+                {% else %}
+                <span class="attendance-status status-inactive">Completed</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center">No attendance records found</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if attendances|length > 10 %}
+      <div class="text-center mt-3">
+        <button class="btn btn-outline-primary btn-sm" onclick="loadMoreAttendance()">
+          <i class="fas fa-chevron-down me-1"></i>Load More
+        </button>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+function loadMoreAttendance() {
+  // Feature: View full history at /agent/<id>/history or My Profile shows recent 50 records
+  window.location.href = '/my_profile';
+}
+</script>
+{% endblock %}

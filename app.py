@@ -17,12 +17,33 @@ except ImportError:
     OPENPYXL_AVAILABLE = False
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'dev-key-change-me'
-# Use database file inside the instance folder for persistence as per README
-instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
-os.makedirs(instance_path, exist_ok=True)
-db_path = os.path.join(instance_path, 'attendance.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+
+# Configuration using environment variables to support deployments (e.g. Vercel).
+# - SECRET_KEY: set in production via environment variable for session/security
+# - DATABASE_URL or SQLALCHEMY_DATABASE_URI: external DB for production (Postgres, MySQL, etc.)
+# If no DATABASE_URL is provided, fall back to a local SQLite file inside `instance/` for
+# local development.
+
+# Secret key
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or os.environ.get('FLASK_SECRET_KEY') or 'dev-key-change-me'
+
+# Database URL: prefer SQLALCHEMY_DATABASE_URI then DATABASE_URL. For some providers
+# (Heroku-like) DATABASE_URL may start with 'postgres://', which SQLAlchemy prefers
+# 'postgresql://'. Normalize that automatically.
+database_url = os.environ.get('SQLALCHEMY_DATABASE_URI') or os.environ.get('DATABASE_URL')
+if database_url:
+    # Normalize old-style postgres URL
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+else:
+    # Use a local sqlite file inside instance/ for development
+    instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
+    os.makedirs(instance_path, exist_ok=True)
+    db_path = os.path.join(instance_path, 'attendance.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+
+# Common SQLAlchemy settings
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)

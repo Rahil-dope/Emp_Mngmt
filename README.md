@@ -116,6 +116,33 @@ When you sign in with a new name and password for the first time, the app will a
 - Regular database backups
 - Consider using PostgreSQL or MySQL for production
 
+## Environment variables (for deployment)
+
+When deploying (for example to Vercel) you should set the following environment variables in the deployment dashboard:
+
+- `SECRET_KEY` or `FLASK_SECRET_KEY` — the Flask secret key used for sessions and CSRF protection. Provide a long random string in production.
+- `DATABASE_URL` or `SQLALCHEMY_DATABASE_URI` — the full database connection URL. Example for PostgreSQL:
+  - `postgresql://USER:PASS@HOST:PORT/DBNAME`
+  - Note: if your provider gives you a URL starting with `postgres://`, the app will automatically normalize it to `postgresql://`.
+- `FLASK_DEBUG` — optional (`0` or `1`) to toggle debug mode (use `0` in production).
+
+If no `DATABASE_URL` or `SQLALCHEMY_DATABASE_URI` is provided the app falls back to a local SQLite file at `instance/attendance.db` (suitable for local development only — not persistent on ephemeral hosts).
+
+Setting environment variables in Vercel:
+
+1. Go to your project in the Vercel dashboard.
+2. Open the "Settings" → "Environment Variables" section.
+3. Add the variables above for the appropriate environment (Preview/Production).
+4. Redeploy your project after saving the variables.
+
+Example minimal variables for production on Vercel:
+
+```
+SECRET_KEY=some-long-random-string
+DATABASE_URL=postgresql://username:password@db-host.example.com:5432/emp_mngmt
+FLASK_DEBUG=0
+```
+
 ## Support
 
 For issues or feature requests, please contact your system administrator.
